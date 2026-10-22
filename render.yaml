@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: smart-parking-system
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOURLY_RATE
+        value: "30.0"
+      - key: ADMIN_NAME
+        value: "Pournami"
+      - key: ADMIN_MOBILE
+        value: "8106479530"
+      - key: ADMIN_EMAIL
+        value: "admin@smartparking.com"
+      - key: ADMIN_PASSWORD
+        value: "Admin@12345"

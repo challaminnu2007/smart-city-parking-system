@@ -13,7 +13,14 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'smart-parking-default-secret-change-me')
     
     instance_dir = os.path.join(basedir, 'instance')
-    os.makedirs(instance_dir, exist_ok=True)
+    try:
+        os.makedirs(instance_dir, exist_ok=True)
+    except OSError:
+        instance_dir = os.path.join('/tmp', 'instance')
+        try:
+            os.makedirs(instance_dir, exist_ok=True)
+        except OSError:
+            pass
     default_db_path = os.path.join(instance_dir, 'smart_parking.db').replace('\\', '/')
 
     # Database URL with fallback to absolute SQLite in instance folder
