@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Parking System{% endblock %} - Smart City Parking</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Razorpay Checkout -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar" id="mainNavbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-square-parking"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">SmartPark</span>
+                    <span class="brand-sub">Management System</span>
+                </div>
+            </a>
+
+            <!-- Mobile Hamburger Button -->
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
+            <!-- Navigation Links -->
+            <div class="nav-menu" id="navMenu">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                            <i class="fa-solid fa-house"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('parking.slots_page') }}" class="nav-link {% if request.endpoint == 'parking.slots_page' %}active{% endif %}">
+                            <i class="fa-solid fa-car-side"></i> Parking Slots
+                        </a>
+                    </li>
+
+                    {% if is_logged_in %}
+                        {% if is_admin %}
+                            <!-- Admin Links -->
+                            <li class="nav-item">
+                                <a href="{{ url_for('admin.dashboard_page') }}" class="nav-link admin-pill {% if 'admin.' in request.endpoint %}active{% endif %}">
+                                    <i class="fa-solid fa-shield-halved"></i> Admin Console
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ url_for('user.dashboard_page') }}" class="nav-link {% if request.endpoint == 'user.dashboard_page' %}active{% endif %}" title="Switch to User Experience View">
+                                    <i class="fa-solid fa-user-tag"></i> User View
+                                </a>
+                            </li>
+                        {% else %}
+                            <!-- User Links -->
+                            <li class="nav-item">
+                                <a href="{{ url_for('user.dashboard_page') }}" class="nav-link {% if request.endpoint == 'user.dashboard_page' %}active{% endif %}">
+                                    <i class="fa-solid fa-gauge-high"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ url_for('booking.my_bookings_page') }}" class="nav-link {% if request.endpoint == 'booking.my_bookings_page' %}active{% endif %}">
+                                    <i class="fa-solid fa-ticket"></i> My Bookings
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+
+                <!-- User Account Actions -->
+                <div class="nav-actions">
+                    {% if is_logged_in %}
+                        <div class="user-dropdown">
+                            <button class="user-btn" id="userMenuBtn">
+                                <div class="user-avatar">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <span class="user-name">{{ current_user.full_name }}</span>
+                                {% if is_admin %}
+                                    <span class="badge badge-admin">ADMIN</span>
+                                {% endif %}
+                                <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+                            </button>
+                            <div class="dropdown-menu" id="userDropdownMenu">
+                                <div class="dropdown-header">
+                                    <div class="user-full">{{ current_user.full_name }}</div>
+                                    <div class="user-meta">{{ current_user.email }}</div>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <a href="{{ url_for('user.profile_page') }}" class="dropdown-item">
+                                    <i class="fa-solid fa-id-card"></i> My Profile
+                                </a>
+                                {% if is_admin %}
+                                    <a href="{{ url_for('admin.dashboard_page') }}" class="dropdown-item">
+                                        <i class="fa-solid fa-gauge"></i> Admin Dashboard
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('booking.my_bookings_page') }}" class="dropdown-item">
+                                        <i class="fa-solid fa-calendar-check"></i> Active Passes
+                                    </a>
+                                    <a href="{{ url_for('booking.parking_history_page') }}" class="dropdown-item">
+                                        <i class="fa-solid fa-clock-rotate-left"></i> Parking History
+                                    </a>
+                                {% endif %}
+                                <div class="dropdown-divider"></div>
+                                <a href="{{ url_for('auth.logout') }}" class="dropdown-item text-danger">
+                                    <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                                </a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <a href="{{ url_for('auth.login_page') }}" class="btn btn-outline btn-sm">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+                        </a>
+                        <a href="{{ url_for('auth.register_page') }}" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-user-plus"></i> Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Toast Notification Container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Flask Flash Messages (rendered as toasts via JS) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flashMessagesData" style="display:none;">
+                {% for category, message in messages %}
+                    <span data-type="{{ category }}" data-message="{{ message }}"></span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content Block -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Modern Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col brand-col">
+                <div class="footer-brand">
+                    <i class="fa-solid fa-square-parking"></i>
+                    <span>SmartPark Management System</span>
+                </div>
+                <p class="footer-desc">
+                    An advanced, automated, and secure IoT-ready smart parking reservation platform. Built for modern urban infrastructure with live availability tracking, instant QR passes, and automated billing.
+                </p>
+                <div class="footer-rate-badge">
+                    <i class="fa-solid fa-bolt"></i> Flat Rate: ₹{{ "%.2f"|format(system_hourly_rate) }} / hour
+                </div>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-heading">Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('parking.slots_page') }}">Browse Parking Slots</a></li>
+                    <li><a href="{{ url_for('auth.login_page') }}">Member Login</a></li>
+                    <li><a href="{{ url_for('auth.register_page') }}">Register New Account</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-heading">System Capabilities</h4>
+                <ul class="footer-links">
+                    <li><i class="fa-solid fa-check text-success"></i> Live Slot Availability</li>
+                    <li><i class="fa-solid fa-check text-success"></i> Secure Razorpay Integration</li>
+                    <li><i class="fa-solid fa-check text-success"></i> Cryptographic QR Parking Pass</li>
+                    <li><i class="fa-solid fa-check text-success"></i> Twilio SMS Booking Receipts</li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4 class="footer-heading">Support & Verification</h4>
+                <p class="footer-text"><i class="fa-solid fa-phone"></i> Helpline: +91 8106479530</p>
+                <p class="footer-text"><i class="fa-solid fa-envelope"></i> admin@smartparking.com</p>
+                <div class="status-indicator-box">
+                    <span class="status-dot online"></span> System Status: Online & Operational
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-container">
+                <p>&copy; {{ now_year }} Smart Parking Management System. All rights reserved. Academic Project Demonstration.</p>
+                <div class="footer-tags">
+                    <span class="tag">Flask</span>
+                    <span class="tag">SQLite / PostgreSQL</span>
+                    <span class="tag">REST APIs</span>
+                    <span class="tag">QR Pass Engine</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Core Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+

@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Urban Parking Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container hero-container">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="status-dot"></span> Next-Gen Smart City Infrastructure
+            </div>
+            <h1 class="hero-title">
+                Seamless Urban Parking, <br>
+                <span class="gradient-text">Reserved In Seconds.</span>
+            </h1>
+            <p class="hero-subtitle">
+                Eliminate the frustration of finding parking. Discover real-time slot availability, reserve in advance, pay securely via UPI or Card, and get an instant digital QR parking pass directly on your phone.
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('parking.slots_page') }}" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-magnifying-glass-location"></i> Find Available Slots
+                </a>
+                {% if not is_logged_in %}
+                    <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline btn-lg">
+                        <i class="fa-solid fa-user-plus"></i> Create Free Account
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('user.dashboard_page') }}" class="btn btn-outline btn-lg">
+                        <i class="fa-solid fa-gauge-high"></i> Open Dashboard
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Highlights Bar -->
+            <div class="hero-highlights">
+                <div class="highlight-item">
+                    <i class="fa-solid fa-bolt text-cyan"></i>
+                    <div>
+                        <div class="highlight-val">₹{{ "%.2f"|format(system_hourly_rate) }} / hr</div>
+                        <div class="highlight-lbl">Transparent Pricing</div>
+                    </div>
+                </div>
+                <div class="highlight-item">
+                    <i class="fa-solid fa-qrcode text-emerald"></i>
+                    <div>
+                        <div class="highlight-val">Instant QR Pass</div>
+                        <div class="highlight-lbl">Contactless Gate Entry</div>
+                    </div>
+                </div>
+                <div class="highlight-item">
+                    <i class="fa-solid fa-comment-sms text-amber"></i>
+                    <div>
+                        <div class="highlight-val">SMS Alerts</div>
+                        <div class="highlight-lbl">Twilio Integration</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="parking-preview-card">
+                <div class="preview-header">
+                    <div class="preview-tag"><i class="fa-solid fa-satellite-dish"></i> Live Lot Monitor</div>
+                    <span class="badge badge-available">System Active</span>
+                </div>
+                <div class="preview-slots-grid">
+                    <div class="preview-slot available">
+                        <span class="pslot-num">A-101</span>
+                        <span class="pslot-status">FREE</span>
+                    </div>
+                    <div class="preview-slot occupied">
+                        <span class="pslot-num">A-102</span>
+                        <span class="pslot-status">BUSY</span>
+                    </div>
+                    <div class="preview-slot available">
+                        <span class="pslot-num">A-103</span>
+                        <span class="pslot-status">FREE</span>
+                    </div>
+                    <div class="preview-slot reserved">
+                        <span class="pslot-num">B-201</span>
+                        <span class="pslot-status">HELD</span>
+                    </div>
+                    <div class="preview-slot available">
+                        <span class="pslot-num">C-301</span>
+                        <span class="pslot-status">EV FREE</span>
+                    </div>
+                    <div class="preview-slot occupied">
+                        <span class="pslot-num">D-001</span>
+                        <span class="pslot-status">BUSY</span>
+                    </div>
+                </div>
+                <div class="preview-footer">
+                    <div class="pf-metric">
+                        <span>Rate:</span>
+                        <strong>₹30/Hour</strong>
+                    </div>
+                    <a href="{{ url_for('parking.slots_page') }}" class="btn btn-primary btn-sm">
+                        View Full Lot <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="workflow-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <span class="section-badge">Streamlined Process</span>
+            <h2 class="section-title">How Smart Parking Works</h2>
+            <p class="section-desc">Experience a frictionless end-to-end journey from booking to automated exit.</p>
+        </div>
+
+        <div class="workflow-grid">
+            <div class="workflow-card">
+                <div class="workflow-step">01</div>
+                <div class="workflow-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h3 class="workflow-title">Choose Your Slot</h3>
+                <p class="workflow-text">Browse real-time slots categorized by Zone, Floor, and Vehicle type (Standard, SUV, EV Charging).</p>
+            </div>
+            <div class="workflow-card">
+                <div class="workflow-step">02</div>
+                <div class="workflow-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                <h3 class="workflow-title">Schedule & Reserve</h3>
+                <p class="workflow-text">Select your arrival time and duration. Overlap prevention algorithms ensure your slot is held exclusively.</p>
+            </div>
+            <div class="workflow-card">
+                <div class="workflow-step">03</div>
+                <div class="workflow-icon"><i class="fa-solid fa-credit-card"></i></div>
+                <h3 class="workflow-title">Instant Payment</h3>
+                <p class="workflow-text">Complete payment securely with Razorpay test mode or our verified local development simulator.</p>
+            </div>
+            <div class="workflow-card">
+                <div class="workflow-step">04</div>
+                <div class="workflow-icon"><i class="fa-solid fa-qrcode"></i></div>
+                <h3 class="workflow-title">Scan QR & Park</h3>
+                <p class="workflow-text">Receive an encrypted QR parking pass and mobile SMS receipt. Present the QR code at the gate for fast check-in.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Grid -->
+<section class="features-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <span class="section-badge">Architectural Highlights</span>
+            <h2 class="section-title">Enterprise-Grade Features</h2>
+            <p class="section-desc">Engineered for security, accuracy, and operational reliability.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon blue"><i class="fa-solid fa-database"></i></div>
+                <h3 class="feature-title">Real Database Metrics</h3>
+                <p class="feature-text">Zero hardcoded dummy statistics. Every count, chart, and slot status is dynamically queried from relational records.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon cyan"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3 class="feature-title">Cryptographic QR Verification</h3>
+                <p class="feature-text">Every generated pass incorporates a server-side HMAC signature preventing counterfeit passes and unauthorized reuse.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                <h3 class="feature-title">Transparent ₹30/Hour Billing</h3>
+                <p class="feature-text">Accurate billable hour computation with minimum 1-hour billing and full calculation breakdown before checkout.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon amber"><i class="fa-solid fa-comment-dots"></i></div>
+                <h3 class="feature-title">SMS Confirmation Logs</h3>
+                <p class="feature-text">Configurable Twilio engine backed by an audit-ready notification repository with complete delivery tracking.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon purple"><i class="fa-solid fa-chart-line"></i></div>
+                <h3 class="feature-title">Visual Analytics & Reports</h3>
+                <p class="feature-text">Full administrative visibility with Chart.js: peak hours distribution, zone occupancy, and CSV financial exports.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon red"><i class="fa-solid fa-user-shield"></i></div>
+                <h3 class="feature-title">Role-Based Access Control</h3>
+                <p class="feature-text">Strict server-side validation separating Admin controls from standard user accounts with Werkzeug password security.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action Banner -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-box">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Park Smarter?</h2>
+                <p class="cta-text">Book your guaranteed parking slot now or access the administrator control center.</p>
+            </div>
+            <div class="cta-buttons">
+                <a href="{{ url_for('parking.slots_page') }}" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-car"></i> Reserve Parking Slot
+                </a>
+                {% if not is_logged_in %}
+                    <a href="{{ url_for('auth.login_page') }}" class="btn btn-outline btn-lg">
+                        <i class="fa-solid fa-lock"></i> Admin / User Login
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* Landing Page Custom Styling */
+.hero-section {
+    padding: 4.5rem 0 3.5rem;
+    background: radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+}
+
+.hero-container {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 3.5rem;
+    align-items: center;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 0.35rem 0.85rem;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #60a5fa;
+    margin-bottom: 1.5rem;
+}
+
+.hero-title {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -1px;
+    margin-bottom: 1.25rem;
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #60a5fa, #22d3ee);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 2rem;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.hero-highlights {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    border-top: 1px solid var(--border-card);
+    padding-top: 1.75rem;
+}
+
+.highlight-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.highlight-item i {
+    font-size: 1.75rem;
+}
+
+.highlight-val {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.highlight-lbl {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Parking Preview Card */
+.parking-preview-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-lg), 0 0 30px rgba(59, 130, 246, 0.15);
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-card);
+}
+
+.preview-tag {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.preview-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.preview-slot {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 0.5rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.preview-slot.available {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.05);
+}
+.preview-slot.available .pslot-status {
+    color: #34d399;
+}
+
+.preview-slot.occupied {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.05);
+}
+.preview-slot.occupied .pslot-status {
+    color: #f87171;
+}
+
+.preview-slot.reserved {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.05);
+}
+.preview-slot.reserved .pslot-status {
+    color: #fbbf24;
+}
+
+.pslot-num {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.pslot-status {
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.preview-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-card);
+}
+
+.pf-metric span {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+.pf-metric strong {
+    display: block;
+    color: var(--accent-cyan);
+    font-size: 1.15rem;
+}
+
+/* Sections Common */
+.section-header {
+    margin-bottom: 3rem;
+}
+.section-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+.section-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.65rem;
+}
+.section-desc {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+}
+.text-center {
+    text-align: center;
+}
+
+/* Workflow Section */
+.workflow-section {
+    padding: 5rem 0;
+    background-color: var(--bg-surface);
+    border-top: 1px solid var(--border-card);
+    border-bottom: 1px solid var(--border-card);
+}
+.workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+.workflow-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1.5rem;
+    position: relative;
+    transition: var(--transition);
+}
+.workflow-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+}
+.workflow-step {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255, 255, 255, 0.08);
+}
+.workflow-icon {
+    width: 54px;
+    height: 54px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+.workflow-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+}
+.workflow-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Features Section */
+.features-section {
+    padding: 5rem 0;
+}
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+.feature-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    transition: var(--transition);
+}
+.feature-card:hover {
+    border-color: var(--border-active);
+    box-shadow: var(--shadow-md);
+}
+.feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    margin-bottom: 1.25rem;
+}
+.feature-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.feature-text {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* CTA Section */
+.cta-section {
+    padding: 2rem 0 5rem;
+}
+.cta-box {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-xl);
+    padding: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    box-shadow: var(--shadow-lg);
+}
+.cta-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+.cta-text {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+}
+.cta-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 992px) {
+    .hero-container {
+        grid-template-columns: 1fr;
+    }
+    .cta-box {
+        flex-direction: column;
+        text-align: center;
+    }
+    .cta-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+@media (max-width: 640px) {
+    .hero-title {
+        font-size: 2.2rem;
+    }
+    .hero-highlights {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+

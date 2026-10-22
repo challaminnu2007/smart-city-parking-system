@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Checkout - {{ booking.booking_reference }}{% endblock %}
+
+{% block content %}
+<div class="container payment-container">
+    <div class="page-header text-center">
+        <span class="section-badge">Secure Transaction Portal</span>
+        <h1 class="page-title">Parking Fee Payment</h1>
+        <p class="page-subtitle">Complete your transaction to finalize the reservation and issue your cryptographic QR parking pass.</p>
+    </div>
+
+    <div class="payment-layout">
+        <!-- Order Summary Card -->
+        <div class="card order-summary-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-receipt text-cyan"></i> Booking Invoice Summary
+                </div>
+                <span class="badge badge-pending">Payment Pending</span>
+            </div>
+            <div class="card-body">
+                <div class="summary-item">
+                    <span>Booking Reference:</span>
+                    <strong class="mono text-cyan">{{ booking.booking_reference }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Assigned Slot:</span>
+                    <strong class="mono">{{ booking.slot.slot_number }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Facility Location:</span>
+                    <span>{{ booking.slot.zone }} ({{ booking.slot.floor }})</span>
+                </div>
+                <div class="summary-item">
+                    <span>Vehicle Plate:</span>
+                    <strong class="mono">{{ booking.vehicle_number }}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Entry Schedule:</span>
+                    <span>{{ booking.start_time.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                </div>
+                <div class="summary-item">
+                    <span>Expected Exit:</span>
+                    <span>{{ booking.end_time.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                </div>
+                <div class="summary-item">
+                    <span>Duration:</span>
+                    <span>{{ booking.duration_hours }} Hour{% if booking.duration_hours > 1 %}s{% endif %}</span>
+                </div>
+                <div class="summary-item">
+                    <span>Rate Applied:</span>
+                    <span>₹{{ "%.2f"|format(booking.hourly_rate) }} / hour</span>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="summary-total">
+                    <div>
+                        <div class="total-label">Total Payable</div>
+                        <div class="total-sub">Inclusive of taxes & lot management</div>
+                    </div>
+                    <div class="total-amount">₹{{ "%.2f"|format(booking.total_amount) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Processing Box -->
+        <div class="card payment-method-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-shield-halved text-emerald"></i> Select Payment Method
+                </div>
+            </div>
+            <div class="card-body">
+                {% if is_razorpay_ready %}
+                    <!-- Real / Test Razorpay Gateway Option -->
+                    <div class="gateway-option-box active" id="razorpayGatewayBox">
+                        <div class="gateway-header">
+                            <div class="gateway-title">
+                                <i class="fa-solid fa-credit-card text-primary"></i> Razorpay Payment Gateway
+                            </div>
+                            <span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> Connected</span>
+                        </div>
+                        <div class="gateway-meta">
+                            <span class="meta-tag"><i class="fa-solid fa-key text-cyan"></i> Mode: <strong>Test Mode</strong></span>
+                            <span class="meta-tag"><i class="fa-solid fa-id-badge text-emerald"></i> Gateway ID: <code>rzp_test_...TqM4sG</code></span>
+                        </div>
+                        <p class="gateway-desc">Pay instantly using UPI (Google Pay, PhonePe, Paytm, BHIM), Credit/Debit Card, Netbanking, or Digital Wallets.</p>
+                        
+                        <div class="payment-methods-pills">
+                            <span class="method-pill"><i class="fa-solid fa-mobile-screen-button text-cyan"></i> UPI / QR</span>
+                            <span class="method-pill"><i class="fa-solid fa-credit-card text-emerald"></i> Cards</span>
+                            <span class="method-pill"><i class="fa-solid fa-building-columns text-amber"></i> Netbanking</span>
+                            <span class="method-pill"><i class="fa-solid fa-wallet text-purple"></i> Wallets</span>
+                        </div>
+
+                        <div class="customer-prefill-preview">
+                            <div class="prefill-row">
+                                <span class="prefill-label">Payer:</span>
+                                <span class="prefill-val">{{ booking.user.full_name }} ({{ booking.user.mobile_number }})</span>
+                            </div>
+                            <div class="prefill-row">
+                                <span class="prefill-label">Email:</span>
+                                <span class="prefill-val">{{ booking.user.email }}</span>
+                            </div>
+                        </div>
+
+                        <button type="button" id="razorpayPayBtn" class="btn btn-primary btn-block btn-lg" onclick="initiateRazorpayPayment()">
+                            <i class="fa-solid fa-lock"></i> Pay ₹{{ "%.2f"|format(booking.total_amount) }} with Razorpay
+                        </button>
+
+                        <div class="test-guide-box">
+                            <i class="fa-solid fa-circle-info text-cyan"></i>
+                            <span>In Razorpay Test Mode, you can test UPI with any VPA (e.g., <code>success@razorpay</code>) or choose <strong>Success</strong> in the checkout modal.</span>
+                        </div>
+                    </div>
+
+                    <!-- Optional Expandable Simulator for Offline Testing -->
+                    <details class="sim-accordion" style="margin-top: 1.25rem;">
+                        <summary class="sim-summary">
+                            <span><i class="fa-solid fa-laptop-code"></i> Offline Viva Simulator (Optional Demo Fallback)</span>
+                            <i class="fa-solid fa-chevron-down summary-chevron"></i>
+                        </summary>
+                        <div class="sim-accordion-content" style="padding-top: 1rem;">
+                            <div class="sim-selector-group">
+                                <label class="form-label">Simulated Channel:</label>
+                                <div class="sim-channels">
+                                    <label class="sim-channel-item">
+                                        <input type="radio" name="simChannel" value="UPI" checked>
+                                        <div class="sim-channel-box">
+                                            <i class="fa-solid fa-mobile-screen-button text-cyan"></i>
+                                            <span>Simulate UPI Payment</span>
+                                        </div>
+                                    </label>
+                                    <label class="sim-channel-item">
+                                        <input type="radio" name="simChannel" value="CARD">
+                                        <div class="sim-channel-box">
+                                            <i class="fa-solid fa-credit-card text-emerald"></i>
+                                            <span>Simulate Card Transaction</span>
+                                        </div>
+                                    </label>
+                                    <label class="sim-channel-item">
+                                        <input type="radio" name="simChannel" value="NETBANKING">
+                                        <div class="sim-channel-box">
+                                            <i class="fa-solid fa-building-columns text-amber"></i>
+                                            <span>Simulate Netbanking</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="button" id="simPayBtn" class="btn btn-outline btn-block" onclick="initiateSimulatedPayment()">
+                                <i class="fa-solid fa-circle-check"></i> Complete via Local Simulator (₹{{ "%.2f"|format(booking.total_amount) }})
+                            </button>
+                        </div>
+                    </details>
+                {% else %}
+                    <!-- Local Development Payment Simulator -->
+                    <div class="gateway-notice-box">
+                        <div class="notice-icon"><i class="fa-solid fa-circle-info"></i></div>
+                        <div class="notice-text">
+                            <strong>Local Development Mode Active</strong>
+                            <p>Razorpay API keys are not provided in <code>.env</code>. The application is running the verified <strong>Local Development Payment Simulator</strong> to allow full academic testing.</p>
+                        </div>
+                    </div>
+
+                    <div class="sim-selector-group">
+                        <label class="form-label">Select Simulated Payment Channel:</label>
+                        <div class="sim-channels">
+                            <label class="sim-channel-item">
+                                <input type="radio" name="simChannel" value="UPI" checked>
+                                <div class="sim-channel-box">
+                                    <i class="fa-solid fa-mobile-screen-button text-cyan"></i>
+                                    <span>Simulate UPI Payment</span>
+                                </div>
+                            </label>
+                            <label class="sim-channel-item">
+                                <input type="radio" name="simChannel" value="CARD">
+                                <div class="sim-channel-box">
+                                    <i class="fa-solid fa-credit-card text-emerald"></i>
+                                    <span>Simulate Card Transaction</span>
+                                </div>
+                            </label>
+                            <label class="sim-channel-item">
+                                <input type="radio" name="simChannel" value="NETBANKING">
+                                <div class="sim-channel-box">
+                                    <i class="fa-solid fa-building-columns text-amber"></i>
+                                    <span>Simulate Netbanking</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="sim-disclaimer">
+                        <i class="fa-solid fa-triangle-exclamation text-amber"></i>
+                        <span>This is a local development simulation for testing workflows. It will generate a genuine server-verified QR pass and SMS log without real financial charges.</span>
+                    </div>
+
+                    <button type="button" id="simPayBtn" class="btn btn-success btn-block btn-lg" onclick="initiateSimulatedPayment()">
+                        <i class="fa-solid fa-circle-check"></i> Complete Simulated Payment (₹{{ "%.2f"|format(booking.total_amount) }})
+                    </button>
+                {% endif %}
+
+                <!-- Cancel Booking Option -->
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <button type="button" class="btn btn-outline btn-sm text-danger" onclick="cancelPendingBooking({{ booking.id }})">
+                        <i class="fa-solid fa-xmark"></i> Cancel This Reservation
+                    </button>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="security-badges">
+                    <span><i class="fa-solid fa-shield"></i> 256-bit TLS Protection</span>
+                    <span><i class="fa-solid fa-qrcode"></i> Instant QR Pass Generation</span>
+                    <span><i class="fa-solid fa-comment-sms"></i> Mobile SMS Dispatch</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="currentBookingId" value="{{ booking.id }}">
+<input type="hidden" id="currentAmount" value="{{ booking.total_amount }}">
+
+<style>
+.payment-container {
+    padding-top: 2rem;
+}
+.payment-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    max-width: 1050px;
+    margin: 2rem auto 0;
+}
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.summary-divider {
+    height: 1px;
+    background: var(--border-card);
+    margin: 1.25rem 0;
+}
+.summary-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.total-label {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.total-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.total-amount {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--accent-emerald);
+}
+
+/* Gateway & Simulator Boxes */
+.gateway-option-box {
+    background: linear-gradient(145deg, rgba(37, 99, 235, 0.08) 0%, rgba(30, 41, 59, 0.6) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 130, 246, 0.1);
+    margin-bottom: 1.5rem;
+}
+.gateway-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.gateway-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.gateway-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+}
+.meta-tag {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+}
+.gateway-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+.payment-methods-pills {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+.method-pill {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.customer-prefill-preview {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.82rem;
+}
+.prefill-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+}
+.prefill-label {
+    color: var(--text-muted);
+}
+.prefill-val {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.test-guide-box {
+    margin-top: 1rem;
+    background: rgba(6, 182, 212, 0.06);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.9rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    line-height: 1.4;
+}
+.sim-accordion {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+}
+.sim-summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+.sim-summary:hover {
+    color: var(--text-primary);
+}
+.gateway-notice-box {
+    background-color: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.notice-icon {
+    font-size: 1.35rem;
+    color: var(--primary);
+}
+.notice-text strong {
+    font-size: 0.88rem;
+    color: #60a5fa;
+}
+.notice-text p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.2rem;
+}
+.sim-channels {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 0.65rem 0 1.25rem;
+}
+.sim-channel-item {
+    cursor: pointer;
+    display: block;
+}
+.sim-channel-item input {
+    display: none;
+}
+.sim-channel-box {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+.sim-channel-item input:checked + .sim-channel-box {
+    border-color: var(--accent-emerald);
+    background-color: rgba(16, 185, 129, 0.08);
+}
+.sim-disclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+.security-badges {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .payment-layout {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/payment.js') }}"></script>
+{% endblock %}
+

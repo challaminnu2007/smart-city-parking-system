@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Payments & Revenue - Admin Console{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('admin.dashboard_page') }}" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Console
+            </a>
+            <h1 class="page-title">Payment & Revenue Audit</h1>
+            <p class="page-subtitle">Examine payment gateway transactions, verify signatures, and download CSV accounting reports.</p>
+        </div>
+        <div class="page-actions">
+            <a href="/api/admin/payments/export" class="btn btn-primary" download>
+                <i class="fa-solid fa-file-csv"></i> Export Payments CSV Report
+            </a>
+            <button class="btn btn-outline" onclick="loadAdminPayments()">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Payments Table Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-receipt text-emerald"></i> Payment Records (<span id="paymentsCountLabel">0</span>)
+            </div>
+            <div class="card-search">
+                <select id="paymentStatusFilter" class="form-select" onchange="loadAdminPayments()" style="width: auto;">
+                    <option value="ALL">All Transactions</option>
+                    <option value="SUCCESS" selected>Verified Success</option>
+                    <option value="PENDING">Pending Checkout</option>
+                    <option value="FAILED">Failed / Rejected</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Booking Ref</th>
+                            <th>Customer Name</th>
+                            <th>Amount (INR)</th>
+                            <th>Gateway / Mode</th>
+                            <th>Status</th>
+                            <th>Environment</th>
+                            <th>Processed At</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center" style="padding: 2.5rem;">
+                                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                                <p style="margin-top: 0.5rem;">Loading payment audit ledger...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div style="font-size: 0.82rem; color: var(--text-muted);">
+                <i class="fa-solid fa-scale-balanced text-primary"></i>
+                Accounting Rule: System revenue is calculated strictly from verified <code>SUCCESS</code> transactions.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadAdminPayments();
+});
+
+async function loadAdminPayments() {
+    const status = document.getElementById('paymentStatusFilter').value;
+    const tbody = document.getElementById('paymentsTableBody');
+
+    try {
+        const response = await fetch(`/api/admin/payments?status=${encodeURIComponent(status)}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Failed to load payments ledger.</td></tr>';
+            return;
+        }
+
+        const payments = data.payments || [];
+        document.getElementById('paymentsCountLabel').textContent = payments.length;
+
+        if (payments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No transactions matching selected status.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = payments.map(p => {
+            const statusLower = p.status.toLowerCase();
+            return `
+                <tr>
+                    <td class="mono" style="font-weight: 700; color: var(--text-primary);">${escapeHtml(p.payment_reference)}</td>
+                    <td class="mono text-cyan">${escapeHtml(p.booking_reference || 'N/A')}</td>
+                    <td>${escapeHtml(p.user_name || 'N/A')}</td>
+                    <td class="text-emerald" style="font-weight: 800; font-size: 1.05rem;">₹${parseFloat(p.amount).toFixed(2)}</td>
+                    <td><span class="badge badge-neutral">${escapeHtml(p.payment_method)}</span></td>
+                    <td><span class="badge badge-${statusLower}">${escapeHtml(p.status)}</span></td>
+                    <td>
+                        ${p.is_simulated 
+                            ? '<span class="badge badge-warning" title="Test Simulator">Dev Simulated</span>' 
+                            : '<span class="badge badge-success" title="Live/Test Razorpay Gateway">Gateway Verified</span>'}
+                    </td>
+                    <td>${formatLocalDateTime(p.created_at)}</td>
+                    <td>
+                        ${p.status === 'PENDING' ? `
+                            <a href="/payment/${p.booking_id}" class="btn btn-primary btn-sm" title="Collect / Take Payment with Razorpay">
+                                <i class="fa-solid fa-credit-card"></i> Pay / Collect
+                            </a>
+                        ` : p.status === 'SUCCESS' ? `
+                            <a href="/confirmation/${p.booking_id}" class="btn btn-outline btn-sm" title="View Digital Parking Pass">
+                                <i class="fa-solid fa-qrcode"></i> View Pass
+                            </a>
+                        ` : `
+                            <a href="/payment/${p.booking_id}" class="btn btn-warning btn-sm" title="Retry Payment">
+                                <i class="fa-solid fa-rotate-right"></i> Retry
+                            </a>
+                        `}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Network error connecting to payment records.</td></tr>';
+    }
+}
+</script>
+{% endblock %}
+

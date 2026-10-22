@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Operational Analytics - Admin Console{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('admin.dashboard_page') }}" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Console
+            </a>
+            <h1 class="page-title">Operational Visual Analytics</h1>
+            <p class="page-subtitle">Real-time facility utilization, revenue generation, and peak traffic patterns generated from live database records.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" onclick="loadAnalyticsCharts()">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh Charts
+            </button>
+        </div>
+    </div>
+
+    <!-- Analytics Charts Grid -->
+    <div class="analytics-grid">
+        <!-- 1. Real-Time Slot Status -->
+        <div class="card chart-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-chart-pie text-cyan"></i> Parking Bay Status Breakdown
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-canvas-wrapper">
+                    <canvas id="slotStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Zone Occupancy Comparison -->
+        <div class="card chart-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-layer-group text-primary"></i> Occupancy by Parking Zone
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-canvas-wrapper">
+                    <canvas id="zoneOccupancyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Daily Bookings Trend (7 Days) -->
+        <div class="card chart-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-calendar-check text-purple"></i> Daily Booking Volume (Last 7 Days)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-canvas-wrapper">
+                    <canvas id="dailyBookingsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Verified Revenue Trend (7 Days) -->
+        <div class="card chart-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-indian-rupee-sign text-emerald"></i> Verified Daily Revenue (₹)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-canvas-wrapper">
+                    <canvas id="dailyRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Peak Parking Entry Hours -->
+        <div class="card chart-card" style="grid-column: 1 / -1;">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-clock text-amber"></i> Facility Peak Parking Arrival Hours (24-Hour Cycle)
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-canvas-wrapper" style="height: 320px;">
+                    <canvas id="peakHoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.analytics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.75rem;
+}
+.chart-card {
+    min-height: 380px;
+}
+.chart-canvas-wrapper {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+let charts = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAnalyticsCharts();
+});
+
+async function loadAnalyticsCharts() {
+    try {
+        const response = await fetch('/api/admin/analytics');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            showToast('Error', 'Failed to retrieve analytics data.', 'danger');
+            return;
+        }
+
+        renderSlotStatusChart(data.slot_status);
+        renderZoneOccupancyChart(data.zone_occupancy);
+        renderDailyTrends(data.daily_trend);
+        renderPeakHoursChart(data.peak_hours);
+
+    } catch (err) {
+        console.error('Analytics load error:', err);
+    }
+}
+
+function destroyChart(id) {
+    if (charts[id]) {
+        charts[id].destroy();
+        delete charts[id];
+    }
+}
+
+function renderSlotStatusChart(stats) {
+    destroyChart('slotStatusChart');
+    const ctx = document.getElementById('slotStatusChart').getContext('2d');
+    
+    charts['slotStatusChart'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(stats),
+            datasets: [{
+                data: Object.values(stats),
+                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#64748b'],
+                borderColor: '#111a2e',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+            }
+        }
+    });
+}
+
+function renderZoneOccupancyChart(zones) {
+    destroyChart('zoneOccupancyChart');
+    const ctx = document.getElementById('zoneOccupancyChart').getContext('2d');
+
+    const labels = zones.map(z => z.zone);
+    const totals = zones.map(z => z.total);
+    const occupied = zones.map(z => z.occupied);
+
+    charts['zoneOccupancyChart'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Total Bays',
+                    data: totals,
+                    backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Occupied/Held',
+                    data: occupied,
+                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+            },
+            plugins: {
+                legend: { labels: { color: '#94a3b8' } }
+            }
+        }
+    });
+}
+
+function renderDailyTrends(trend) {
+    destroyChart('dailyBookingsChart');
+    destroyChart('dailyRevenueChart');
+
+    // Daily Bookings
+    const bCtx = document.getElementById('dailyBookingsChart').getContext('2d');
+    charts['dailyBookingsChart'] = new Chart(bCtx, {
+        type: 'line',
+        data: {
+            labels: trend.labels,
+            datasets: [{
+                label: 'Bookings Created',
+                data: trend.bookings,
+                borderColor: '#a855f7',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                fill: true,
+                tension: 0.35,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+            },
+            plugins: { legend: { labels: { color: '#94a3b8' } } }
+        }
+    });
+
+    // Daily Revenue
+    const rCtx = document.getElementById('dailyRevenueChart').getContext('2d');
+    charts['dailyRevenueChart'] = new Chart(rCtx, {
+        type: 'line',
+        data: {
+            labels: trend.labels,
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: trend.revenue,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.35,
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+            },
+            plugins: { legend: { labels: { color: '#94a3b8' } } }
+        }
+    });
+}
+
+function renderPeakHoursChart(peak) {
+    destroyChart('peakHoursChart');
+    const ctx = document.getElementById('peakHoursChart').getContext('2d');
+
+    charts['peakHoursChart'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: peak.labels,
+            datasets: [{
+                label: 'Arrivals Recorded',
+                data: peak.counts,
+                backgroundColor: 'rgba(245, 158, 11, 0.65)',
+                borderColor: '#f59e0b',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+            },
+            plugins: { legend: { labels: { color: '#94a3b8' } } }
+        }
+    });
+}
+</script>
+{% endblock %}
+

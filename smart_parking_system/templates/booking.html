@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Book Slot {{ slot.slot_number }}{% endblock %}
+
+{% block content %}
+<div class="container booking-container">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('parking.slots_page') }}" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Slots
+            </a>
+            <h1 class="page-title">Reserve Parking Slot <span class="mono text-cyan">{{ slot.slot_number }}</span></h1>
+            <p class="page-subtitle">Configure your parking schedule. Your slot will be held exclusively upon checkout.</p>
+        </div>
+    </div>
+
+    <div class="booking-grid">
+        <!-- Left: Booking Form -->
+        <div class="booking-form-col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-calendar-check text-primary"></i> Reservation Details
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="bookingForm" onsubmit="handleCreateBooking(event)">
+                        <input type="hidden" id="slotId" value="{{ slot.id }}">
+                        <input type="hidden" id="slotHourlyRate" value="{{ slot.hourly_rate }}">
+
+                        <div class="form-group">
+                            <label for="vehicleNumber" class="form-label">Vehicle Registration Number <span class="text-danger">*</span></label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-car input-icon"></i>
+                                <input type="text" id="vehicleNumber" class="form-control with-icon" 
+                                       value="{{ user.vehicle_number }}" required style="text-transform: uppercase;">
+                            </div>
+                            <div class="form-text">Must match the vehicle entering the parking gate</div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="startTime" class="form-label">Arrival Date & Time <span class="text-danger">*</span></label>
+                                <input type="datetime-local" id="startTime" class="form-control" 
+                                       required onchange="recalculatePrice()">
+                                <div class="form-text">Select your planned arrival time</div>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="durationHours" class="form-label">Parking Duration (Hours) <span class="text-danger">*</span></label>
+                                <select id="durationHours" class="form-select" onchange="recalculatePrice()" required>
+                                    <option value="1">1 Hour (Minimum)</option>
+                                    <option value="2" selected>2 Hours</option>
+                                    <option value="3">3 Hours</option>
+                                    <option value="4">4 Hours</option>
+                                    <option value="5">5 Hours</option>
+                                    <option value="6">6 Hours</option>
+                                    <option value="8">8 Hours (Full Day)</option>
+                                    <option value="12">12 Hours (Extended)</option>
+                                    <option value="24">24 Hours (Overnight)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Estimated Departure Time</label>
+                            <div id="expectedExitPreview" class="expected-exit-box mono">
+                                Calculating...
+                            </div>
+                        </div>
+
+                        <button type="submit" id="bookingSubmitBtn" class="btn btn-primary btn-block btn-lg">
+                            <i class="fa-solid fa-credit-card"></i> Proceed to Secure Payment &rarr;
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Slot Info & Price Breakdown -->
+        <div class="booking-summary-col">
+            <!-- Slot Details Card -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-circle-info text-cyan"></i> Selected Bay Details
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="slot-summary-row">
+                        <span>Slot ID:</span>
+                        <strong class="mono text-cyan" style="font-size: 1.15rem;">{{ slot.slot_number }}</strong>
+                    </div>
+                    <div class="slot-summary-row">
+                        <span>Zone:</span>
+                        <strong>{{ slot.zone }}</strong>
+                    </div>
+                    <div class="slot-summary-row">
+                        <span>Floor / Level:</span>
+                        <strong>{{ slot.floor }}</strong>
+                    </div>
+                    <div class="slot-summary-row">
+                        <span>Vehicle Category:</span>
+                        <span class="badge badge-neutral">{{ slot.slot_type }}</span>
+                    </div>
+                    <div class="slot-summary-row">
+                        <span>Standard Rate:</span>
+                        <strong>₹{{ "%.2f"|format(slot.hourly_rate) }} / hr</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Breakdown Calculation Card -->
+            <div class="card price-calculation-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-receipt text-emerald"></i> Transparent Price Calculation
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="calc-row">
+                        <span>Hourly Rate</span>
+                        <span id="calcRate">₹30.00</span>
+                    </div>
+                    <div class="calc-row">
+                        <span>Billable Duration</span>
+                        <span id="calcDuration">2 Hours</span>
+                    </div>
+                    <div class="calc-row">
+                        <span>Rate Formula</span>
+                        <span class="mono" id="calcFormula">2 × ₹30.00</span>
+                    </div>
+                    <div class="calc-divider"></div>
+                    <div class="calc-total-row">
+                        <div>
+                            <strong>Total Payable Amount</strong>
+                            <div class="calc-sub">Inclusive of all local parking fees</div>
+                        </div>
+                        <div class="calc-total-val" id="calcTotal">₹60.00</div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="guarantee-note">
+                        <i class="fa-solid fa-shield-check text-success"></i>
+                        <span>Guaranteed reservation. Concurrency lock prevents overlapping bookings.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.booking-container {
+    padding-top: 2rem;
+}
+.booking-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1.75rem;
+}
+.expected-exit-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    color: var(--accent-cyan);
+    font-size: 0.95rem;
+}
+.slot-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+.slot-summary-row strong {
+    color: var(--text-primary);
+}
+.calc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.45rem 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+.calc-divider {
+    height: 1px;
+    background: var(--border-card);
+    margin: 0.85rem 0;
+}
+.calc-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.calc-total-val {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--accent-emerald);
+}
+.calc-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.guarantee-note {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 992px) {
+    .booking-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/booking.js') }}"></script>
+{% endblock %}
+

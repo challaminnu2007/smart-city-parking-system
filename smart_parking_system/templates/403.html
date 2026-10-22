@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Access Forbidden{% endblock %}
+
+{% block content %}
+<div class="container" style="text-align: center; padding: 6rem 1.5rem;">
+    <div style="font-size: 5rem; color: var(--accent-amber); margin-bottom: 1rem;">
+        <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">403 - Access Forbidden</h1>
+    <p style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 2rem; font-size: 1.05rem;">
+        You do not have the necessary permissions to access this administrative or protected resource.
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fa-solid fa-house"></i> Return Home
+        </a>
+        <a href="{{ url_for('user.dashboard_page') }}" class="btn btn-outline">
+            <i class="fa-solid fa-gauge"></i> User Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+

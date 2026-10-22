@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+
+{% block title %}Administrator Operations Console{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div>
+            <div class="admin-badge-strip">
+                <span class="badge badge-admin"><i class="fa-solid fa-shield-halved"></i> Role: Administrator</span>
+                <span class="admin-user-title">Operator: <strong>{{ user.full_name }}</strong> ({{ user.username }})</span>
+            </div>
+            <h1 class="page-title">Smart City Control Center</h1>
+            <p class="page-subtitle">Real-time oversight of bays, live reservations, payments, and automated gate validation.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('user.dashboard_page') }}" class="btn btn-outline" title="Switch to User View Experience">
+                <i class="fa-solid fa-user-tag text-cyan"></i> Switch to User View
+            </a>
+            <button class="btn btn-primary" onclick="openModal('addSlotModal')">
+                <i class="fa-solid fa-plus-circle"></i> Add Parking Slot
+            </button>
+            <button class="btn btn-success" onclick="openModal('qrScannerModal')">
+                <i class="fa-solid fa-qrcode"></i> Gate QR Validator
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin KPI Metrics Grid (Strictly from Database records) -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon blue"><i class="fa-solid fa-square-parking"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Total Bays</div>
+                <div class="kpi-value" id="kpiTotalSlots">--</div>
+                <div class="kpi-subtext">All parking slots registered</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Available Bays</div>
+                <div class="kpi-value text-success" id="kpiAvailableSlots">--</div>
+                <div class="kpi-subtext">Open for instant booking</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon red"><i class="fa-solid fa-car"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Occupied Bays</div>
+                <div class="kpi-value text-danger" id="kpiOccupiedSlots">--</div>
+                <div class="kpi-subtext">Currently parked vehicles</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon amber"><i class="fa-solid fa-bookmark"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Reserved Bays</div>
+                <div class="kpi-value text-warning" id="kpiReservedSlots">--</div>
+                <div class="kpi-subtext">Booked, awaiting vehicle arrival</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon purple"><i class="fa-solid fa-users"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Registered Users</div>
+                <div class="kpi-value" id="kpiTotalUsers">--</div>
+                <div class="kpi-subtext">Customers in database</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon cyan"><i class="fa-solid fa-clipboard-list"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Total Bookings</div>
+                <div class="kpi-value" id="kpiTotalBookings">--</div>
+                <div class="kpi-subtext">All time reservations</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-credit-card"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Verified Payments</div>
+                <div class="kpi-value text-success" id="kpiSuccessPayments">--</div>
+                <div class="kpi-subtext">Successful transactions</div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Verified Revenue</div>
+                <div class="kpi-value text-emerald" id="kpiTotalRevenue">₹--</div>
+                <div class="kpi-subtext">Strictly verified funds only</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Hub -->
+    <div class="admin-modules-grid">
+        <a href="{{ url_for('admin.slots_management_page') }}" class="module-card">
+            <div class="module-icon"><i class="fa-solid fa-cubes-stacked text-primary"></i></div>
+            <div class="module-content">
+                <h3>Bay Management</h3>
+                <p>Create, modify, toggle maintenance, and configure zone assignments.</p>
+            </div>
+            <i class="fa-solid fa-arrow-right module-arrow"></i>
+        </a>
+        <a href="{{ url_for('admin.users_management_page') }}" class="module-card">
+            <div class="module-icon"><i class="fa-solid fa-users-gear text-purple"></i></div>
+            <div class="module-content">
+                <h3>User Directory</h3>
+                <p>Inspect registered drivers, vehicle plate numbers, and account statuses.</p>
+            </div>
+            <i class="fa-solid fa-arrow-right module-arrow"></i>
+        </a>
+        <a href="{{ url_for('admin.bookings_management_page') }}" class="module-card">
+            <div class="module-icon"><i class="fa-solid fa-calendar-check text-cyan"></i></div>
+            <div class="module-content">
+                <h3>Booking Operations</h3>
+                <p>Manage check-ins, check-outs, gate clearances, and policy cancellations.</p>
+            </div>
+            <i class="fa-solid fa-arrow-right module-arrow"></i>
+        </a>
+        <a href="{{ url_for('admin.payments_management_page') }}" class="module-card">
+            <div class="module-icon"><i class="fa-solid fa-wallet text-emerald"></i></div>
+            <div class="module-content">
+                <h3>Revenue & Payments</h3>
+                <p>Review Razorpay and simulator records; export CSV financial reports.</p>
+            </div>
+            <i class="fa-solid fa-arrow-right module-arrow"></i>
+        </a>
+        <a href="{{ url_for('admin.analytics_page') }}" class="module-card">
+            <div class="module-icon"><i class="fa-solid fa-chart-pie text-amber"></i></div>
+            <div class="module-content">
+                <h3>Analytics Dashboards</h3>
+                <p>Interactive Chart.js trends, peak hour distribution, and zone occupancy.</p>
+            </div>
+            <i class="fa-solid fa-arrow-right module-arrow"></i>
+        </a>
+    </div>
+
+    <!-- Live Recent Bookings Table -->
+    <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-clock text-primary"></i> Latest Operational Bookings
+            </div>
+            <a href="{{ url_for('admin.bookings_management_page') }}" class="btn btn-outline btn-sm">
+                View All Bookings
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Ref</th>
+                            <th>Slot</th>
+                            <th>Driver</th>
+                            <th>Vehicle</th>
+                            <th>Entry Time</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Gate Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminRecentBookingsBody">
+                        <tr>
+                            <td colspan="8" class="text-center" style="padding: 2rem;">
+                                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                                <p style="margin-top: 0.5rem;">Loading bookings...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Slot -->
+<div class="modal-backdrop" id="addSlotModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-plus-circle text-primary"></i> Add New Parking Slot</h3>
+            <button class="modal-close" onclick="closeModal('addSlotModal')">&times;</button>
+        </div>
+        <form onsubmit="handleCreateSlot(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Slot Identifier <span class="text-danger">*</span></label>
+                    <input type="text" id="newSlotNumber" class="form-control mono" placeholder="e.g. E-101" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Parking Zone <span class="text-danger">*</span></label>
+                    <input type="text" id="newSlotZone" class="form-control" placeholder="e.g. Zone E - North Terminal" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Floor / Level</label>
+                        <input type="text" id="newSlotFloor" class="form-control" value="Ground" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Slot Type</label>
+                        <select id="newSlotType" class="form-select">
+                            <option value="Standard">Standard</option>
+                            <option value="Compact">Compact</option>
+                            <option value="SUV">SUV</option>
+                            <option value="EV Charging">EV Charging</option>
+                            <option value="Accessible">Accessible</option>
+                            <option value="Two-Wheeler">Two-Wheeler</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Initial Status</label>
+                        <select id="newSlotStatus" class="form-select">
+                            <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Hourly Rate (₹)</label>
+                        <input type="number" id="newSlotRate" class="form-control" value="30.00" step="1.0" min="5" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addSlotModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveSlotBtn">Create Slot</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Gate QR Code Validator Tool -->
+<div class="modal-backdrop" id="qrScannerModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-qrcode text-success"></i> Gate QR Pass Validator</h3>
+            <button class="modal-close" onclick="closeModal('qrScannerModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-secondary" style="font-size: 0.88rem; margin-bottom: 1.25rem;">
+                Scan pass or enter Booking Reference / QR data payload to verify signature and check vehicle in/out.
+            </p>
+            <div class="form-group">
+                <label class="form-label">Booking Reference or QR Payload</label>
+                <textarea id="qrInputData" class="form-control mono" rows="4" 
+                          placeholder="Paste QR payload JSON or booking reference e.g. BK-20261013-ABCD..."></textarea>
+            </div>
+            <button type="button" class="btn btn-primary btn-block" onclick="verifyQRPass()">
+                <i class="fa-solid fa-shield-check"></i> Validate Cryptographic Pass
+            </button>
+
+            <!-- Verification Result Box -->
+            <div id="qrVerificationResult" style="margin-top: 1.5rem; display: none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeModal('qrScannerModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-container {
+    padding-top: 2rem;
+}
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.admin-badge-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+}
+.admin-user-title {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+.admin-modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+}
+.module-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: var(--transition);
+    color: inherit;
+    position: relative;
+}
+.module-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    color: inherit;
+}
+.module-icon {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+}
+.module-content h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+.module-content p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+.module-arrow {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: var(--transition);
+}
+.module-card:hover .module-arrow {
+    color: var(--primary);
+    transform: translateX(3px);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadAdminDashboard();
+});
+
+async function loadAdminDashboard() {
+    try {
+        const response = await fetch('/api/admin/dashboard');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            showToast('Error', 'Failed to retrieve administrative metrics.', 'danger');
+            return;
+        }
+
+        const m = data.metrics;
+        document.getElementById('kpiTotalSlots').textContent = m.total_slots;
+        document.getElementById('kpiAvailableSlots').textContent = m.available_slots;
+        document.getElementById('kpiOccupiedSlots').textContent = m.occupied_slots;
+        document.getElementById('kpiReservedSlots').textContent = m.reserved_slots;
+        document.getElementById('kpiTotalUsers').textContent = m.total_users;
+        document.getElementById('kpiTotalBookings').textContent = m.total_bookings;
+        document.getElementById('kpiSuccessPayments').textContent = m.successful_payments;
+        document.getElementById('kpiTotalRevenue').textContent = `₹${parseFloat(m.total_revenue).toFixed(2)}`;
+
+        // Populate Recent Bookings Table
+        const tbody = document.getElementById('adminRecentBookingsBody');
+        const recent = data.recent_bookings || [];
+
+        if (recent.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No bookings recorded yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = recent.map(b => {
+            const statusLower = b.status.toLowerCase();
+            return `
+                <tr>
+                    <td class="mono" style="font-weight: 700; color: var(--text-primary);">${escapeHtml(b.booking_reference)}</td>
+                    <td><span class="badge badge-neutral">${escapeHtml(b.slot_number)}</span></td>
+                    <td>${escapeHtml(b.user_name || 'N/A')}</td>
+                    <td class="mono">${escapeHtml(b.vehicle_number)}</td>
+                    <td>${formatLocalDateTime(b.start_time)}</td>
+                    <td class="text-emerald" style="font-weight: 700;">₹${parseFloat(b.total_amount).toFixed(2)}</td>
+                    <td><span class="badge badge-${statusLower}">${escapeHtml(b.status)}</span></td>
+                    <td>
+                        ${b.status === 'CONFIRMED' ? `
+                            <button class="btn btn-success btn-sm" onclick="performGateCheckIn(${b.id})">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> Check In
+                            </button>
+                        ` : b.status === 'CHECKED_IN' ? `
+                            <button class="btn btn-danger btn-sm" onclick="performGateCheckOut(${b.id})">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i> Check Out
+                            </button>
+                        ` : `
+                            <span class="text-muted" style="font-size: 0.8rem;">--</span>
+                        `}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Admin dashboard error:', err);
+    }
+}
+
+async function performGateCheckIn(bookingId) {
+    try {
+        const response = await fetch('/api/qr/check-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ booking_id: bookingId })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Checked In', data.message, 'success');
+            loadAdminDashboard();
+        } else {
+            showToast('Error', data.message || 'Check in failed.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Check in failed.', 'danger');
+    }
+}
+
+async function performGateCheckOut(bookingId) {
+    try {
+        const response = await fetch('/api/qr/check-out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ booking_id: bookingId })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Checked Out', data.message, 'success');
+            loadAdminDashboard();
+        } else {
+            showToast('Error', data.message || 'Check out failed.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Check out failed.', 'danger');
+    }
+}
+
+async function handleCreateSlot(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveSlotBtn');
+    btn.disabled = true;
+
+    const slotNumber = document.getElementById('newSlotNumber').value.trim().toUpperCase();
+    const zone = document.getElementById('newSlotZone').value.trim();
+    const floor = document.getElementById('newSlotFloor').value.trim();
+    const slotType = document.getElementById('newSlotType').value;
+    const status = document.getElementById('newSlotStatus').value;
+    const hourlyRate = document.getElementById('newSlotRate').value;
+
+    try {
+        const response = await fetch('/api/admin/slots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                slot_number: slotNumber,
+                zone: zone,
+                floor: floor,
+                slot_type: slotType,
+                status: status,
+                hourly_rate: parseFloat(hourlyRate)
+            })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Slot Created', `Slot ${slotNumber} has been added.`, 'success');
+            closeModal('addSlotModal');
+            loadAdminDashboard();
+        } else {
+            showToast('Conflict', data.message || 'Could not create slot.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Failed to reach server.', 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function verifyQRPass() {
+    const rawData = document.getElementById('qrInputData').value.trim();
+    const resultBox = document.getElementById('qrVerificationResult');
+
+    if (!rawData) {
+        showToast('Input Required', 'Please enter QR code payload or booking reference.', 'warning');
+        return;
+    }
+
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = '<p class="text-secondary"><i class="fa-solid fa-spinner fa-spin"></i> Validating cryptographic signature and payment...</p>';
+
+    try {
+        const response = await fetch('/api/qr/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ qr_data: rawData })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.valid) {
+            resultBox.innerHTML = `
+                <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="color: var(--accent-emerald); font-weight: 800; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                        <i class="fa-solid fa-circle-check"></i> PASS VERIFIED & GENUINE
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.5rem;">${escapeHtml(data.message)}</p>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
+                        <div>Slot: <strong class="mono text-cyan">${escapeHtml(data.slot_number)}</strong></div>
+                        <div>Vehicle: <strong class="mono">${escapeHtml(data.vehicle_number)}</strong></div>
+                        <div>Current Status: <span class="badge badge-${data.status.toLowerCase()}">${escapeHtml(data.status)}</span></div>
+                    </div>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        ${data.status === 'CONFIRMED' ? `
+                            <button class="btn btn-success btn-sm" onclick="performGateCheckIn(${data.booking_id}); closeModal('qrScannerModal');">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> Check In Vehicle Now
+                            </button>
+                        ` : data.status === 'CHECKED_IN' ? `
+                            <button class="btn btn-danger btn-sm" onclick="performGateCheckOut(${data.booking_id}); closeModal('qrScannerModal');">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i> Check Out Vehicle
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            resultBox.innerHTML = `
+                <div style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="color: var(--accent-rose); font-weight: 800; font-size: 1.1rem; margin-bottom: 0.35rem;">
+                        <i class="fa-solid fa-circle-xmark"></i> ACCESS DENIED / INVALID PASS
+                    </div>
+                    <p style="font-size: 0.85rem; color: #fca5a5;">${escapeHtml(data.error || 'QR pass could not be authenticated.')}</p>
+                </div>
+            `;
+        }
+    } catch {
+        resultBox.innerHTML = '<div class="text-danger">Failed to connect to QR verification service.</div>';
+    }
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Parking History{% endblock %}
+
+{% block content %}
+<div class="container history-container">
+    <div class="page-header">
+        <div>
+            <span class="section-badge">Audit Trail</span>
+            <h1 class="page-title">Parking History</h1>
+            <p class="page-subtitle">Complete chronological record of all your past parking transactions and visits.</p>
+        </div>
+        <div class="page-actions">
+            <a href="{{ url_for('booking.my_bookings_page') }}" class="btn btn-outline">
+                <i class="fa-solid fa-ticket"></i> Active Passes
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-clock-rotate-left text-cyan"></i> Past Parking Sessions
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Slot Number</th>
+                            <th>Location</th>
+                            <th>Vehicle</th>
+                            <th>Entry Time</th>
+                            <th>Exit Time</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <tr>
+                            <td colspan="9" class="text-center" style="padding: 2.5rem;">
+                                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                                <p style="margin-top: 0.5rem;">Loading parking history from database...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.history-container {
+    padding-top: 2rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadParkingHistory();
+});
+
+async function loadParkingHistory() {
+    try {
+        const response = await fetch('/api/bookings/my');
+        const data = await response.json();
+        const tbody = document.getElementById('historyTableBody');
+
+        if (!response.ok || !data.success) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Failed to load history records.</td></tr>';
+            return;
+        }
+
+        const history = data.history_bookings || [];
+
+        if (history.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center" style="padding: 3rem 1rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-clock-rotate-left fa-2x" style="margin-bottom: 0.5rem;"></i>
+                        <p>No historical parking sessions recorded yet.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = history.map(b => `
+            <tr>
+                <td class="mono" style="font-weight: 700; color: var(--text-primary);">${escapeHtml(b.booking_reference)}</td>
+                <td><strong class="mono text-cyan">${escapeHtml(b.slot_number)}</strong></td>
+                <td>${escapeHtml(b.slot_zone)} (${escapeHtml(b.slot_floor)})</td>
+                <td class="mono">${escapeHtml(b.vehicle_number)}</td>
+                <td>${formatLocalDateTime(b.start_time)}</td>
+                <td>${formatLocalDateTime(b.end_time)}</td>
+                <td class="text-emerald" style="font-weight: 700;">₹${parseFloat(b.total_amount).toFixed(2)}</td>
+                <td><span class="badge badge-${b.status.toLowerCase()}">${escapeHtml(b.status)}</span></td>
+                <td>
+                    <a href="/pass/${b.id}/print" target="_blank" class="btn btn-outline btn-sm">
+                        <i class="fa-solid fa-receipt"></i> Ticket
+                    </a>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error loading history.</td></tr>';
+    }
+}
+</script>
+{% endblock %}
+

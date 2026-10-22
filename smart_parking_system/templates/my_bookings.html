@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}My Parking Bookings{% endblock %}
+
+{% block content %}
+<div class="container passes-container">
+    <div class="page-header">
+        <div>
+            <span class="section-badge">Customer Portal</span>
+            <h1 class="page-title">My Parking Passes</h1>
+            <p class="page-subtitle">View your active reservations, digital QR tickets, and pending payments.</p>
+        </div>
+        <div class="page-actions">
+            <a href="{{ url_for('parking.slots_page') }}" class="btn btn-primary">
+                <i class="fa-solid fa-plus-circle"></i> Book Another Slot
+            </a>
+        </div>
+    </div>
+
+    <!-- Passes Tabs -->
+    <div class="passes-tabs">
+        <button class="pass-tab active" onclick="switchPassTab('active', this)">
+            <i class="fa-solid fa-ticket"></i> Active & Upcoming Passes (<span id="activePassCount">0</span>)
+        </button>
+        <button class="pass-tab" onclick="switchPassTab('pending', this)">
+            <i class="fa-solid fa-clock text-amber"></i> Awaiting Payment (<span id="pendingPassCount">0</span>)
+        </button>
+        <button class="pass-tab" onclick="switchPassTab('history', this)">
+            <i class="fa-solid fa-clock-rotate-left"></i> Completed & Past Trips (<span id="historyPassCount">0</span>)
+        </button>
+    </div>
+
+    <!-- Active Passes Panel -->
+    <div id="activePassesPanel" class="tab-panel active">
+        <div id="activePassesList" class="passes-grid">
+            <div class="loading-state">
+                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                <p>Loading your parking passes...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Payment Panel -->
+    <div id="pendingPassesPanel" class="tab-panel">
+        <div id="pendingPassesList" class="passes-grid">
+            <div class="loading-state">
+                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                <p>Loading pending reservations...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Passes Panel -->
+    <div id="historyPassesPanel" class="tab-panel">
+        <div id="historyPassesList" class="passes-grid">
+            <div class="loading-state">
+                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                <p>Loading parking history...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.passes-container {
+    padding-top: 2rem;
+}
+.passes-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-card);
+    margin-bottom: 2rem;
+    overflow-x: auto;
+}
+.pass-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    padding: 0.85rem 1.25rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.pass-tab:hover {
+    color: var(--text-primary);
+}
+.pass-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+.tab-panel {
+    display: none;
+}
+.tab-panel.active {
+    display: block;
+}
+.passes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1.5rem;
+}
+.pass-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+}
+.pass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+.pass-card-header {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-card);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.pass-card-body {
+    padding: 1.25rem;
+}
+.pass-card-footer {
+    padding: 0.85rem 1.25rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-top: 1px solid var(--border-card);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+.pass-ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+.pass-detail-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 0.35rem 0;
+    color: var(--text-secondary);
+}
+.pass-detail-item strong {
+    color: var(--text-primary);
+}
+</style>
+
+<script>
+let bookingsData = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadMyPasses();
+});
+
+function switchPassTab(tabName, btn) {
+    document.querySelectorAll('.pass-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+    document.getElementById(`${tabName}PassesPanel`).classList.add('active');
+}
+
+async function loadMyPasses() {
+    try {
+        const response = await fetch('/api/bookings/my');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            showToast('Error', 'Unable to fetch your booking passes.', 'danger');
+            return;
+        }
+
+        bookingsData = data;
+        const active = data.active_bookings || [];
+        const pending = data.pending_bookings || [];
+        const history = data.history_bookings || [];
+
+        document.getElementById('activePassCount').textContent = active.length;
+        document.getElementById('pendingPassCount').textContent = pending.length;
+        document.getElementById('historyPassCount').textContent = history.length;
+
+        renderPassesList('activePassesList', active, 'active');
+        renderPassesList('pendingPassesList', pending, 'pending');
+        renderPassesList('historyPassesList', history, 'history');
+    } catch (err) {
+        console.error('Passes load error:', err);
+    }
+}
+
+function renderPassesList(containerId, list, type) {
+    const container = document.getElementById(containerId);
+    if (!list || list.length === 0) {
+        container.innerHTML = `
+            <div class="loading-state" style="grid-column: 1 / -1;">
+                <i class="fa-solid fa-ticket fa-2x text-muted" style="margin-bottom: 0.5rem;"></i>
+                <p>No ${type} bookings found in your account.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = list.map(b => {
+        const statusLower = b.status.toLowerCase();
+        return `
+            <div class="pass-card">
+                <div class="pass-card-header">
+                    <span class="pass-ref">${escapeHtml(b.booking_reference)}</span>
+                    <span class="badge badge-${statusLower}">${escapeHtml(b.status)}</span>
+                </div>
+                <div class="pass-card-body">
+                    <div class="pass-detail-item">
+                        <span>Parking Slot:</span>
+                        <strong class="mono text-cyan" style="font-size: 1.1rem;">${escapeHtml(b.slot_number)}</strong>
+                    </div>
+                    <div class="pass-detail-item">
+                        <span>Location:</span>
+                        <span>${escapeHtml(b.slot_zone)} (${escapeHtml(b.slot_floor)})</span>
+                    </div>
+                    <div class="pass-detail-item">
+                        <span>Vehicle Plate:</span>
+                        <strong class="mono">${escapeHtml(b.vehicle_number)}</strong>
+                    </div>
+                    <div class="pass-detail-item">
+                        <span>Schedule:</span>
+                        <span>${formatLocalDateTime(b.start_time)}</span>
+                    </div>
+                    <div class="pass-detail-item">
+                        <span>Duration:</span>
+                        <span>${b.duration_hours} Hour${b.duration_hours > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="pass-detail-item">
+                        <span>Fee Paid:</span>
+                        <strong class="text-emerald">₹${parseFloat(b.total_amount).toFixed(2)}</strong>
+                    </div>
+                </div>
+                <div class="pass-card-footer">
+                    ${b.status === 'PENDING_PAYMENT' ? `
+                        <a href="/payment/${b.id}" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-credit-card"></i> Pay Now
+                        </a>
+                        <button class="btn btn-outline btn-sm text-danger" onclick="cancelBooking(${b.id})">
+                            Cancel
+                        </button>
+                    ` : `
+                        <a href="/confirmation/${b.id}" class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-qrcode"></i> View QR Pass
+                        </a>
+                        <a href="/pass/${b.id}/print" target="_blank" class="btn btn-outline btn-sm">
+                            <i class="fa-solid fa-print"></i> Print
+                        </a>
+                        ${b.status === 'CONFIRMED' ? `
+                            <button class="btn btn-outline btn-sm text-danger" onclick="cancelBooking(${b.id})">
+                                Cancel
+                            </button>
+                        ` : ''}
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function cancelBooking(bookingId) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+    try {
+        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Cancelled', 'Booking cancelled successfully.', 'info');
+            loadMyPasses();
+        } else {
+            showToast('Error', data.message || 'Could not cancel booking.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Failed to reach server.', 'danger');
+    }
+}
+</script>
+{% endblock %}
+

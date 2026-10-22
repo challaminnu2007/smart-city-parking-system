@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Parking Slots & Availability{% endblock %}
+
+{% block content %}
+<div class="container slots-container">
+    <div class="page-header">
+        <div>
+            <span class="section-badge">Real-Time Facility Map</span>
+            <h1 class="page-title">Parking Slots Discovery</h1>
+            <p class="page-subtitle">Find and reserve available parking bays in real-time. Transparent ₹30/hour billing.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" onclick="loadSlots()" id="refreshSlotsBtn">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh Availability
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="card filter-card">
+        <div class="filter-grid">
+            <div class="filter-item search-box">
+                <label for="slotSearchInput" class="form-label">Search Slot ID or Location</label>
+                <div class="input-icon-wrapper">
+                    <i class="fa-solid fa-magnifying-glass input-icon"></i>
+                    <input type="text" id="slotSearchInput" class="form-control with-icon" 
+                           placeholder="e.g. A-101, Level 1, EV Plaza..." oninput="debounceSlots()">
+                </div>
+            </div>
+            <div class="filter-item">
+                <label for="statusFilter" class="form-label">Availability Status</label>
+                <select id="statusFilter" class="form-select" onchange="loadSlots()">
+                    <option value="ALL">All Statuses</option>
+                    <option value="AVAILABLE" selected>Available (Ready to Book)</option>
+                    <option value="RESERVED">Reserved</option>
+                    <option value="OCCUPIED">Occupied</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="zoneFilter" class="form-label">Parking Zone</label>
+                <select id="zoneFilter" class="form-select" onchange="loadSlots()">
+                    <option value="ALL">All Zones</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="typeFilter" class="form-label">Slot Type</label>
+                <select id="typeFilter" class="form-select" onchange="loadSlots()">
+                    <option value="ALL">All Vehicle Types</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Summary Bar -->
+    <div class="slots-stats-strip">
+        <div>Showing <strong id="slotsCountLabel">0</strong> parking slots</div>
+        <div class="legend-items">
+            <span class="legend-item"><span class="badge badge-available">●</span> Available</span>
+            <span class="legend-item"><span class="badge badge-reserved">●</span> Reserved</span>
+            <span class="legend-item"><span class="badge badge-occupied">●</span> Occupied</span>
+            <span class="legend-item"><span class="badge badge-maintenance">●</span> Maintenance</span>
+        </div>
+    </div>
+
+    <!-- Parking Slots Grid -->
+    <div id="slotsGrid" class="slots-grid">
+        <div class="loading-state">
+            <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+            <p>Querying parking slot status from database...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.slots-container {
+    padding-top: 2rem;
+}
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.page-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 0.2rem 0 0.4rem;
+}
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+.filter-card {
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.filter-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 1.25rem;
+}
+.slots-stats-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.legend-items {
+    display: flex;
+    gap: 1rem;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+}
+.loading-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 992px) {
+    .filter-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 640px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/parking.js') }}"></script>
+{% endblock %}
+

@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Parking Bays - Admin Console{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('admin.dashboard_page') }}" class="btn btn-outline btn-sm" style="margin-bottom: 0.75rem;">
+                <i class="fa-solid fa-arrow-left"></i> Back to Console
+            </a>
+            <h1 class="page-title">Parking Bay Management</h1>
+            <p class="page-subtitle">Configure slot definitions, zones, maintenance windows, and rate settings.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-primary" onclick="openModal('addSlotModal')">
+                <i class="fa-solid fa-plus-circle"></i> Add New Slot
+            </button>
+            <button class="btn btn-outline" onclick="loadAllSlots()">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Slots Management Table Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-square-parking text-primary"></i> Registered Parking Slots (<span id="slotsCount">0</span>)
+            </div>
+            <div class="card-search">
+                <input type="text" id="slotTableSearch" class="form-control" placeholder="Search slot, zone, floor..." oninput="filterSlotRows()">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="slotsTable">
+                    <thead>
+                        <tr>
+                            <th>Slot Number</th>
+                            <th>Zone</th>
+                            <th>Floor</th>
+                            <th>Vehicle Type</th>
+                            <th>Hourly Rate</th>
+                            <th>Status</th>
+                            <th>Sample Data</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="slotsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center" style="padding: 2.5rem;">
+                                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i>
+                                <p style="margin-top: 0.5rem;">Loading parking slots...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Slot -->
+<div class="modal-backdrop" id="addSlotModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-plus-circle text-primary"></i> Create Parking Slot</h3>
+            <button class="modal-close" onclick="closeModal('addSlotModal')">&times;</button>
+        </div>
+        <form onsubmit="handleCreateSlot(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Slot Identifier <span class="text-danger">*</span></label>
+                    <input type="text" id="addSlotNumber" class="form-control mono" placeholder="e.g. F-101" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Parking Zone <span class="text-danger">*</span></label>
+                    <input type="text" id="addSlotZone" class="form-control" placeholder="e.g. Zone F - VIP Terminal" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Floor / Level</label>
+                        <input type="text" id="addSlotFloor" class="form-control" value="Ground" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Vehicle Type</label>
+                        <select id="addSlotType" class="form-select">
+                            <option value="Standard">Standard</option>
+                            <option value="Compact">Compact</option>
+                            <option value="SUV">SUV</option>
+                            <option value="EV Charging">EV Charging</option>
+                            <option value="Accessible">Accessible</option>
+                            <option value="Two-Wheeler">Two-Wheeler</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Status</label>
+                        <select id="addSlotStatus" class="form-select">
+                            <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Hourly Rate (₹)</label>
+                        <input type="number" id="addSlotRate" class="form-control" value="30.00" step="1.0" min="5" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addSlotModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveAddSlotBtn">Create Slot</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit Slot -->
+<div class="modal-backdrop" id="editSlotModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="fa-solid fa-pen-to-square text-primary"></i> Edit Slot <span id="editSlotTitle" class="mono text-cyan"></span></h3>
+            <button class="modal-close" onclick="closeModal('editSlotModal')">&times;</button>
+        </div>
+        <form onsubmit="handleUpdateSlot(event)">
+            <input type="hidden" id="editSlotId">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Slot Identifier <span class="text-danger">*</span></label>
+                    <input type="text" id="editSlotNumber" class="form-control mono" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Zone</label>
+                    <input type="text" id="editSlotZone" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Floor</label>
+                        <input type="text" id="editSlotFloor" class="form-control" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Slot Type</label>
+                        <select id="editSlotType" class="form-select">
+                            <option value="Standard">Standard</option>
+                            <option value="Compact">Compact</option>
+                            <option value="SUV">SUV</option>
+                            <option value="EV Charging">EV Charging</option>
+                            <option value="Accessible">Accessible</option>
+                            <option value="Two-Wheeler">Two-Wheeler</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Current Status</label>
+                        <select id="editSlotStatus" class="form-select">
+                            <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="RESERVED">RESERVED</option>
+                            <option value="OCCUPIED">OCCUPIED</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label">Hourly Rate (₹)</label>
+                        <input type="number" id="editSlotRate" class="form-control" step="1.0" min="5" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('editSlotModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveEditSlotBtn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let allSlots = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAllSlots();
+});
+
+async function loadAllSlots() {
+    try {
+        const response = await fetch('/api/admin/slots');
+        const data = await response.json();
+        const tbody = document.getElementById('slotsTableBody');
+
+        if (!response.ok || !data.success) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load slots.</td></tr>';
+            return;
+        }
+
+        allSlots = data.slots || [];
+        document.getElementById('slotsCount').textContent = allSlots.length;
+        renderSlotsTable(allSlots);
+    } catch {
+        document.getElementById('slotsTableBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Network error connecting to slots API.</td></tr>';
+    }
+}
+
+function renderSlotsTable(slots) {
+    const tbody = document.getElementById('slotsTableBody');
+    if (slots.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No slots registered.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = slots.map(s => {
+        const statusLower = s.status.toLowerCase();
+        return `
+            <tr>
+                <td class="mono" style="font-weight: 800; color: var(--text-primary);">${escapeHtml(s.slot_number)}</td>
+                <td>${escapeHtml(s.zone)}</td>
+                <td>${escapeHtml(s.floor)}</td>
+                <td><span class="badge badge-neutral">${escapeHtml(s.slot_type)}</span></td>
+                <td class="text-emerald" style="font-weight: 700;">₹${parseFloat(s.hourly_rate).toFixed(2)}</td>
+                <td><span class="badge badge-${statusLower}">${escapeHtml(s.status)}</span></td>
+                <td>
+                    ${s.is_sample ? '<span class="badge badge-neutral">Pre-Seeded Sample</span>' : '<span class="text-muted" style="font-size: 0.8rem;">Custom</span>'}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.35rem;">
+                        <button class="btn btn-outline btn-sm" onclick="openEditModal(${s.id})">
+                            <i class="fa-solid fa-pen"></i> Edit
+                        </button>
+                        <button class="btn btn-outline btn-sm text-danger" onclick="deleteSlot(${s.id}, '${escapeHtml(s.slot_number)}')">
+                            <i class="fa-solid fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterSlotRows() {
+    const q = document.getElementById('slotTableSearch').value.toLowerCase();
+    const filtered = allSlots.filter(s => 
+        s.slot_number.toLowerCase().includes(q) ||
+        s.zone.toLowerCase().includes(q) ||
+        s.floor.toLowerCase().includes(q) ||
+        s.slot_type.toLowerCase().includes(q) ||
+        s.status.toLowerCase().includes(q)
+    );
+    renderSlotsTable(filtered);
+}
+
+function openEditModal(slotId) {
+    const slot = allSlots.find(s => s.id === slotId);
+    if (!slot) return;
+
+    document.getElementById('editSlotId').value = slot.id;
+    document.getElementById('editSlotTitle').textContent = slot.slot_number;
+    document.getElementById('editSlotNumber').value = slot.slot_number;
+    document.getElementById('editSlotZone').value = slot.zone;
+    document.getElementById('editSlotFloor').value = slot.floor;
+    document.getElementById('editSlotType').value = slot.slot_type;
+    document.getElementById('editSlotStatus').value = slot.status;
+    document.getElementById('editSlotRate').value = slot.hourly_rate;
+
+    openModal('editSlotModal');
+}
+
+async function handleCreateSlot(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveAddSlotBtn');
+    btn.disabled = true;
+
+    const payload = {
+        slot_number: document.getElementById('addSlotNumber').value.trim().toUpperCase(),
+        zone: document.getElementById('addSlotZone').value.trim(),
+        floor: document.getElementById('addSlotFloor').value.trim(),
+        slot_type: document.getElementById('addSlotType').value,
+        status: document.getElementById('addSlotStatus').value,
+        hourly_rate: parseFloat(document.getElementById('addSlotRate').value)
+    };
+
+    try {
+        const response = await fetch('/api/admin/slots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Slot Created', data.message, 'success');
+            closeModal('addSlotModal');
+            loadAllSlots();
+        } else {
+            showToast('Error', data.message || 'Slot creation failed.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Connection failed.', 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function handleUpdateSlot(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveEditSlotBtn');
+    const slotId = document.getElementById('editSlotId').value;
+    btn.disabled = true;
+
+    const payload = {
+        slot_number: document.getElementById('editSlotNumber').value.trim().toUpperCase(),
+        zone: document.getElementById('editSlotZone').value.trim(),
+        floor: document.getElementById('editSlotFloor').value.trim(),
+        slot_type: document.getElementById('editSlotType').value,
+        status: document.getElementById('editSlotStatus').value,
+        hourly_rate: parseFloat(document.getElementById('editSlotRate').value)
+    };
+
+    try {
+        const response = await fetch(`/api/admin/slots/${slotId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Slot Updated', data.message, 'success');
+            closeModal('editSlotModal');
+            loadAllSlots();
+        } else {
+            showToast('Error', data.message || 'Slot update failed.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Connection failed.', 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function deleteSlot(slotId, slotNumber) {
+    if (!confirm(`Are you sure you want to delete parking slot ${slotNumber}? This cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/admin/slots/${slotId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Slot Deleted', data.message, 'info');
+            loadAllSlots();
+        } else {
+            showToast('Cannot Delete', data.message || 'Slot could not be deleted.', 'danger', 4500);
+        }
+    } catch {
+        showToast('Network Error', 'Connection failed.', 'danger');
+    }
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <!-- Welcome Header -->
+    <div class="dashboard-header">
+        <div class="user-greeting">
+            <span class="greeting-subtitle">Customer Portal</span>
+            <h1 class="greeting-title">Welcome back, <span class="gradient-text">{{ user.full_name }}</span>!</h1>
+            <p class="greeting-meta">
+                <i class="fa-solid fa-car"></i> Registered Vehicle: <strong class="mono">{{ user.vehicle_number }}</strong> &bull;
+                <i class="fa-solid fa-phone"></i> Mobile: {{ user.mobile_number }}
+            </p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('parking.slots_page') }}" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-plus-circle"></i> Quick Book Slot
+            </a>
+            <a href="{{ url_for('booking.my_bookings_page') }}" class="btn btn-outline">
+                <i class="fa-solid fa-ticket"></i> My Passes
+            </a>
+        </div>
+    </div>
+
+    <!-- Facility Occupancy KPI Cards (Live from Database) -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon blue"><i class="fa-solid fa-square-parking"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Total Facility Slots</div>
+                <div class="kpi-value" id="totalSlotsCount">--</div>
+                <div class="kpi-subtext">Multi-level parking lot</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Available Slots</div>
+                <div class="kpi-value text-success" id="availableSlotsCount">--</div>
+                <div class="kpi-subtext">Open for instant reservation</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon red"><i class="fa-solid fa-car-side"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Occupied Slots</div>
+                <div class="kpi-value text-danger" id="occupiedSlotsCount">--</div>
+                <div class="kpi-subtext">Currently parked vehicles</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon cyan"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            <div class="kpi-info">
+                <div class="kpi-title">Your Completed Trips</div>
+                <div class="kpi-value" id="historyTripsCount">--</div>
+                <div class="kpi-subtext">Parking sessions recorded</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Booking Spotlight Section -->
+    <div class="dashboard-section" id="activeBookingContainer">
+        <!-- Injected via JavaScript from database -->
+        <div class="card active-booking-card placeholder-glow">
+            <div class="card-body text-center" style="padding: 3rem 1.5rem;">
+                <i class="fa-solid fa-spinner fa-spin fa-2x text-primary" style="margin-bottom: 1rem;"></i>
+                <p>Loading your active parking reservation...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-Column Operational Layout -->
+    <div class="dashboard-grid">
+        <!-- Left Column: Upcoming Passes & Quick History -->
+        <div class="dashboard-col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-calendar-days text-primary"></i> Upcoming & Recent Bookings
+                    </div>
+                    <a href="{{ url_for('booking.my_bookings_page') }}" class="btn btn-outline btn-sm">View All</a>
+                </div>
+                <div class="card-body" id="recentBookingsList">
+                    <p class="text-muted">Loading bookings...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Parking Availability Visualization Map -->
+        <div class="dashboard-col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-chart-pie text-cyan"></i> Live Zone Availability
+                    </div>
+                    <a href="{{ url_for('parking.slots_page') }}" class="btn btn-outline btn-sm">Explore Map</a>
+                </div>
+                <div class="card-body">
+                    <div id="zonesAvailabilityList" class="zones-progress-list">
+                        <p class="text-muted">Loading zone metrics...</p>
+                    </div>
+                    <div class="rate-summary-box">
+                        <div class="rate-icon"><i class="fa-solid fa-tag"></i></div>
+                        <div class="rate-content">
+                            <strong>Standard Parking Rate: ₹30.00 / Hour</strong>
+                            <p>Billed in 1-hour minimum increments. Safe online payments with instant QR passes.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-container {
+    padding-top: 2rem;
+}
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+.greeting-subtitle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    letter-spacing: 1px;
+}
+.greeting-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin: 0.2rem 0 0.5rem;
+}
+.greeting-meta {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+.dashboard-section {
+    margin-bottom: 2rem;
+}
+
+/* Active Booking Card */
+.active-booking-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: var(--radius-xl);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
+}
+.active-booking-badge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.active-booking-content {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    padding: 2rem;
+}
+.slot-badge-big {
+    background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+    color: #fff;
+    width: 90px;
+    height: 90px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+.slot-badge-big span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.85;
+}
+.slot-badge-big strong {
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+.active-details h3 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+}
+.active-meta {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.65rem;
+    flex-wrap: wrap;
+}
+.active-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+/* Zones Progress List */
+.zones-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+.zone-item-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+.progress-bar-bg {
+    height: 8px;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-emerald), var(--primary));
+    border-radius: var(--radius-full);
+}
+.progress-bar-fill.high {
+    background: linear-gradient(90deg, var(--accent-amber), var(--accent-rose));
+}
+.rate-summary-box {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.rate-icon {
+    font-size: 1.5rem;
+    color: var(--accent-cyan);
+}
+.rate-content strong {
+    font-size: 0.92rem;
+    color: var(--text-primary);
+}
+.rate-content p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 992px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .active-booking-content {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    .slot-badge-big {
+        margin: 0 auto;
+    }
+    .active-meta {
+        justify-content: center;
+    }
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
+

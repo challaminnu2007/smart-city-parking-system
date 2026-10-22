@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Booking Confirmed - {{ booking.booking_reference }}{% endblock %}
+
+{% block content %}
+<div class="container confirmation-container">
+    <div class="confirmation-card">
+        <!-- Success Banner -->
+        <div class="confirmation-banner">
+            <div class="success-icon">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h1 class="confirmation-title">Booking Confirmed!</h1>
+            <p class="confirmation-subtitle">
+                Payment verified successfully. Your slot is guaranteed and your cryptographic digital parking pass is ready.
+            </p>
+        </div>
+
+        <div class="confirmation-grid">
+            <!-- QR Pass Digital Ticket -->
+            <div class="qr-pass-box">
+                <div class="qr-pass-header">
+                    <div class="pass-brand">
+                        <i class="fa-solid fa-square-parking text-primary"></i>
+                        <span>SmartPark Pass</span>
+                    </div>
+                    <span class="badge badge-success">VALID PASS</span>
+                </div>
+
+                <div class="qr-image-wrapper">
+                    {% if booking.qr_code_image %}
+                        <img src="{{ booking.qr_code_image }}" alt="Digital QR Parking Pass" class="qr-code-img">
+                    {% else %}
+                        <div class="qr-fallback">Generating QR Pass...</div>
+                    {% endif %}
+                </div>
+
+                <div class="qr-pass-code mono">
+                    REF: {{ booking.booking_reference }}
+                </div>
+
+                <p class="qr-pass-instructions">
+                    Present this QR code at the facility entry gate scanner for contactless access.
+                </p>
+
+                <div class="qr-actions">
+                    <a href="/api/bookings/{{ booking.id }}/qr?download=true" class="btn btn-outline btn-sm">
+                        <i class="fa-solid fa-download"></i> Download PNG
+                    </a>
+                    <a href="/pass/{{ booking.id }}/print" target="_blank" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-print"></i> Print Friendly Pass
+                    </a>
+                </div>
+            </div>
+
+            <!-- Booking Summary Details -->
+            <div class="confirmation-details">
+                <h3 class="details-heading">
+                    <i class="fa-solid fa-file-invoice text-cyan"></i> Parking Pass Details
+                </h3>
+
+                <div class="detail-row">
+                    <span>Parking Bay / Slot:</span>
+                    <strong class="mono text-cyan" style="font-size: 1.25rem;">{{ booking.slot.slot_number }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Zone & Level:</span>
+                    <strong>{{ booking.slot.zone }} &bull; {{ booking.slot.floor }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Vehicle Plate:</span>
+                    <strong class="mono">{{ booking.vehicle_number }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Authorized Entry Time:</span>
+                    <span>{{ booking.start_time.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Expected Exit Time:</span>
+                    <span>{{ booking.end_time.strftime('%b %d, %Y - %I:%M %p') }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Duration Booked:</span>
+                    <span>{{ booking.duration_hours }} Hour{% if booking.duration_hours > 1 %}s{% endif %}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Amount Paid:</span>
+                    <strong class="text-emerald" style="font-size: 1.25rem;">₹{{ "%.2f"|format(booking.total_amount) }}</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Payment Gateway:</span>
+                    <span>{{ booking.payment.payment_gateway if booking.payment else 'VERIFIED' }}</span>
+                </div>
+
+                <!-- SMS Notification Status Notice -->
+                <div class="sms-status-box">
+                    <div class="sms-icon"><i class="fa-solid fa-comment-sms"></i></div>
+                    <div class="sms-text">
+                        <strong>Mobile SMS Confirmation</strong>
+                        {% set notif = booking.notifications.first() %}
+                        {% if notif %}
+                            {% if notif.status == 'SENT' %}
+                                <p class="text-success"><i class="fa-solid fa-check"></i> SMS sent to {{ notif.mobile_number }} via Twilio.</p>
+                            {% elif notif.status == 'DEV_SIMULATED' %}
+                                <p class="text-cyan"><i class="fa-solid fa-info-circle"></i> Logged in development notification repository (Twilio unconfigured in .env).</p>
+                            {% else %}
+                                <p class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> SMS Status: {{ notif.status }}</p>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-muted">Notification dispatched to registered mobile {{ current_user.mobile_number }}.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="nav-return-actions">
+                    <a href="{{ url_for('user.dashboard_page') }}" class="btn btn-outline">
+                        <i class="fa-solid fa-gauge-high"></i> Back to Dashboard
+                    </a>
+                    <a href="{{ url_for('booking.my_bookings_page') }}" class="btn btn-primary">
+                        <i class="fa-solid fa-ticket"></i> View All My Passes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.confirmation-container {
+    padding-top: 2rem;
+    max-width: 960px;
+}
+.confirmation-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-xl);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-lg);
+}
+.confirmation-banner {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--border-card);
+}
+.success-icon {
+    font-size: 3.5rem;
+    color: var(--accent-emerald);
+    margin-bottom: 0.85rem;
+}
+.confirmation-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+}
+.confirmation-subtitle {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    max-width: 580px;
+    margin: 0 auto;
+}
+.confirmation-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 2.5rem;
+    align-items: start;
+}
+.qr-pass-box {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+}
+.qr-pass-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+.pass-brand {
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+.qr-image-wrapper {
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    display: inline-block;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.qr-code-img {
+    width: 180px;
+    height: 180px;
+    display: block;
+}
+.qr-pass-code {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+.qr-pass-instructions {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
+}
+.qr-actions {
+    display: flex;
+    gap: 0.65rem;
+    justify-content: center;
+}
+.details-heading {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.detail-row strong {
+    color: var(--text-primary);
+}
+.sms-status-box {
+    margin-top: 1.5rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+}
+.sms-icon {
+    font-size: 1.35rem;
+    color: var(--accent-cyan);
+    margin-top: 0.1rem;
+}
+.sms-text strong {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+.sms-text p {
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+.nav-return-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 0.75rem;
+}
+
+@media (max-width: 800px) {
+    .confirmation-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+

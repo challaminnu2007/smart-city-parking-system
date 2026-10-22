@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card" style="max-width: 580px;">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fa-solid fa-user-plus"></i>
+            </div>
+            <h1 class="auth-title">Create User Account</h1>
+            <p class="auth-subtitle">Join SmartPark to instantly discover and reserve city parking bays</p>
+        </div>
+
+        <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" id="fullName" name="full_name" class="form-control" 
+                           placeholder="e.g. Ramesh Kumar" required>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                    <input type="text" id="username" name="username" class="form-control" 
+                           placeholder="e.g. ramesh99" required autocomplete="username">
+                    <div class="form-text">3-30 letters, numbers, or underscores</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" id="email" name="email" class="form-control" 
+                           placeholder="name@example.com" required autocomplete="email">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="mobileNumber" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                    <div class="input-prefix-wrapper">
+                        <span class="input-prefix">+91</span>
+                        <input type="tel" id="mobileNumber" name="mobile_number" class="form-control with-prefix" 
+                               placeholder="10-digit number" pattern="[0-9]{10}" maxlength="10" required>
+                    </div>
+                    <div class="form-text">For SMS booking passes & receipts</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="vehicleNumber" class="form-label">Vehicle Registration Number <span class="text-danger">*</span></label>
+                <div class="input-icon-wrapper">
+                    <i class="fa-solid fa-car input-icon"></i>
+                    <input type="text" id="vehicleNumber" name="vehicle_number" class="form-control with-icon uppercase" 
+                           placeholder="e.g. TS09AB1234 or AP09CD5678" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-text">Pre-fills your bookings for faster gate clearance</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label for="regPassword" class="form-label">Password <span class="text-danger">*</span></label>
+                    <input type="password" id="regPassword" name="password" class="form-control" 
+                           placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="form-group flex-1">
+                    <label for="confirmPassword" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                    <input type="password" id="confirmPassword" name="confirm_password" class="form-control" 
+                           placeholder="Re-enter password" minlength="6" required autocomplete="new-password">
+                </div>
+            </div>
+
+            <div class="form-check-group">
+                <input type="checkbox" id="termsAgree" required>
+                <label for="termsAgree">I agree to the Smart City Parking terms and ₹30/hour billing policy.</label>
+            </div>
+
+            <button type="submit" id="regSubmitBtn" class="btn btn-primary btn-block btn-lg">
+                <i class="fa-solid fa-user-check"></i> Register Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login_page') }}">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-row {
+    display: flex;
+    gap: 1.25rem;
+}
+.flex-1 {
+    flex: 1;
+}
+.input-prefix-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-prefix {
+    position: absolute;
+    left: 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    pointer-events: none;
+}
+.form-control.with-prefix {
+    padding-left: 3.25rem;
+}
+.form-check-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin: 1.25rem 0 1.5rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.form-check-group input {
+    margin-top: 0.25rem;
+    cursor: pointer;
+}
+.text-danger {
+    color: var(--accent-rose);
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+</style>
+
+<script>
+async function handleRegister(e) {
+    e.preventDefault();
+    const btn = document.getElementById('regSubmitBtn');
+    const originalText = btn.innerHTML;
+
+    const fullName = document.getElementById('fullName').value.trim();
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const mobileNumber = document.getElementById('mobileNumber').value.trim();
+    const vehicleNumber = document.getElementById('vehicleNumber').value.trim().toUpperCase();
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Frontend validation
+    if (password !== confirmPassword) {
+        showToast('Password Mismatch', 'Password and confirmation password do not match.', 'danger');
+        return;
+    }
+
+    if (password.length < 6) {
+        showToast('Weak Password', 'Password must be at least 6 characters long.', 'danger');
+        return;
+    }
+
+    if (!/^[0-9]{10}$/.test(mobileNumber)) {
+        showToast('Invalid Mobile', 'Please provide a valid 10-digit mobile number.', 'danger');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+
+    try {
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: fullName,
+                username: username,
+                email: email,
+                mobile_number: mobileNumber,
+                vehicle_number: vehicleNumber,
+                password: password,
+                confirm_password: confirmPassword
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            showToast('Registration Complete!', 'Account created successfully. Redirecting to sign in...', 'success', 2500);
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
+        } else {
+            showToast('Registration Error', data.message || 'Could not complete registration.', 'danger', 4500);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (err) {
+        showToast('Network Error', 'Could not contact the server. Please try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+</script>
+{% endblock %}
+

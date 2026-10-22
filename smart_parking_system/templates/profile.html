@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile & Settings{% endblock %}
+
+{% block content %}
+<div class="container profile-container">
+    <div class="page-header">
+        <div>
+            <span class="section-badge">Account Settings</span>
+            <h1 class="page-title">Profile & Security</h1>
+            <p class="page-subtitle">Manage your personal information, mobile contact, default vehicle, and password.</p>
+        </div>
+    </div>
+
+    <div class="profile-grid">
+        <!-- Left: Profile Details -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-id-card text-primary"></i> Personal Details
+                </div>
+                <span class="badge badge-{% if user.role == 'ADMIN' %}admin{% else %}active{% endif %}">
+                    {{ user.role }}
+                </span>
+            </div>
+            <div class="card-body">
+                <form id="profileForm" onsubmit="handleUpdateProfile(event)">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" value="{{ user.username }}" disabled>
+                        <div class="form-text">Usernames are immutable for security audit integrity</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                        <div class="form-text">Primary contact address linked to transactions</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profileFullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" id="profileFullName" class="form-control" 
+                               value="{{ user.full_name }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profileMobile" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" id="profileMobile" class="form-control" 
+                               value="{{ user.mobile_number }}" pattern="[0-9]{10}" maxlength="10" required>
+                        <div class="form-text">Used for receiving Twilio SMS confirmation passes</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profileVehicle" class="form-label">Default Vehicle Registration <span class="text-danger">*</span></label>
+                        <input type="text" id="profileVehicle" class="form-control mono" 
+                               value="{{ user.vehicle_number }}" required style="text-transform: uppercase;">
+                    </div>
+
+                    <button type="submit" id="saveProfileBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Profile Details
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right: Change Password -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-lock text-amber"></i> Change Password
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="passwordForm" onsubmit="handleChangePassword(event)">
+                    <div class="form-group">
+                        <label for="currentPassword" class="form-label">Current Password <span class="text-danger">*</span></label>
+                        <input type="password" id="currentPassword" class="form-control" required autocomplete="current-password">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword" class="form-label">New Password <span class="text-danger">*</span></label>
+                        <input type="password" id="newPassword" class="form-control" minlength="6" required autocomplete="new-password">
+                        <div class="form-text">Must be at least 6 characters long</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmNewPassword" class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                        <input type="password" id="confirmNewPassword" class="form-control" minlength="6" required autocomplete="new-password">
+                    </div>
+
+                    <button type="submit" id="savePasswordBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-key"></i> Update Password
+                    </button>
+                </form>
+            </div>
+            <div class="card-footer">
+                <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+                    <i class="fa-solid fa-shield-halved text-success"></i>
+                    Passwords are encrypted using Werkzeug cryptographic key derivation.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.profile-container {
+    padding-top: 2rem;
+}
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.75rem;
+}
+
+@media (max-width: 850px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveProfileBtn');
+    const originalText = btn.innerHTML;
+
+    const fullName = document.getElementById('profileFullName').value.trim();
+    const mobileNumber = document.getElementById('profileMobile').value.trim();
+    const vehicleNumber = document.getElementById('profileVehicle').value.trim().toUpperCase();
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+
+    try {
+        const response = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: fullName,
+                mobile_number: mobileNumber,
+                vehicle_number: vehicleNumber
+            })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Profile Updated', 'Your contact and vehicle information were saved.', 'success');
+        } else {
+            showToast('Error', data.message || 'Failed to update profile.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Connection failed.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const btn = document.getElementById('savePasswordBtn');
+    const originalText = btn.innerHTML;
+
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+    if (newPassword !== confirmNewPassword) {
+        showToast('Mismatch', 'New passwords do not match.', 'danger');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+
+    try {
+        const response = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword,
+                confirm_new_password: confirmNewPassword
+            })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+            showToast('Success', 'Password updated successfully.', 'success');
+            document.getElementById('passwordForm').reset();
+        } else {
+            showToast('Error', data.message || 'Failed to change password.', 'danger');
+        }
+    } catch {
+        showToast('Network Error', 'Connection failed.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+</script>
+{% endblock %}
+
